@@ -35,7 +35,18 @@ class AppTheme {
 
   final TextStyle textButton1 = const TextStyle(fontSize: 30.0, color: Color.fromARGB(255, 255, 255, 255));
  final ButtonStyle buttonLightStyle = ElevatedButton.styleFrom(
-    backgroundColor:  const Color.fromRGBO(244,157,76,1), // Color de fondo del botón
+    backgroundColor:  const Color.fromRGBO(244,157,76,1),
+    foregroundColor: Colors.white, // Color de fondo del botón
+    // Estilo de texto
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), // Padding interno
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(8.0), // Borde redondeado
+    ),
+  );
+
+  final ButtonStyle buttonDarkStyle = ElevatedButton.styleFrom(
+    backgroundColor:  const Color(0xFF111D26),
+    foregroundColor: Colors.white, // Color de fondo del botón
     // Estilo de texto
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), // Padding interno
     shape: RoundedRectangleBorder(

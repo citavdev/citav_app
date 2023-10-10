@@ -54,6 +54,7 @@ class DrawerPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.sync),
             title: const Text('Sincronizar'),
+            enabled: false,
             onTap: () {
               // Lógica para sincronizar
               Navigator.of(context).pop(); // Cerrar el Drawer
@@ -70,6 +71,7 @@ class DrawerPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.list),
             title: const Text('Inspec. Realizadas'),
+            enabled: false,
             onTap: () {
               Navigator.of(context).pop(); // Cerrar el Drawer
               Navigator.pushNamed(context, '/my_inspections');

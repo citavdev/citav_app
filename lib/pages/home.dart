@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
 import '../widgets/drawer.dart';
 
-
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  const HomePage({Key? key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(''),
-      iconTheme: const IconThemeData(color: Colors.white),
-      leading: IconButton(
-        icon: const Icon(Icons.menu), // Puedes usar el icono del Drawer o cualquier otro icono que desees
-        onPressed: () {
-          const DrawerPage();// Aquí puedes abrir el Drawer o realizar cualquier otra acción que necesites
-        },
-      iconSize: 36.0, // Ajusta el tamaño del icono a tu preferencia
+      appBar: AppBar(
+        title: const Text(''),
+        iconTheme: const IconThemeData(color: Colors.white),
+        leading: Builder(
+          builder: (BuildContext context) {
+            // Utiliza Builder para obtener un contexto adecuado
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                Scaffold.of(context).openDrawer(); // Abre el Drawer
+              },
+              iconSize: 36.0,
+            );
+          },
+        ),
       ),
-      ),
-      
       drawer: const DrawerPage(),
       body: Container(
         decoration: const BoxDecoration(
@@ -48,36 +52,36 @@ class HomePage extends StatelessWidget {
     return GridView.count(
       crossAxisCount: 1, // Cambia el número de columnas aquí
       childAspectRatio: 2.5,
-      mainAxisSpacing: 45.0,  
-          
+      mainAxisSpacing: 45.0,
       children: [
-        _roundedButton('assets/imageButton3.png', '/inspection', context, "Nueva \n Inspección"),
-        _roundedButton('assets/imageButton3.png', '/my_inspections', context, "Inspecciones \n Realizadas"),
+        const SizedBox(height: 50),
+         _roundedButton('assets/imageButton3.png', '/inspection', context, "Nueva \n Inspección"),
+        // _roundedButton('assets/imageButton3.png', '/my_inspections', context, "Inspecciones \n Realizadas"),
         // _roundedButton('assets/imageButton3.png', '/inspection', context, "Sincronizar"),
       ],
     );
   }
 
-Widget _buildHorizontalButtons(BuildContext context) {
-  return Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        GridView.count(
-          crossAxisCount: 3, // Cambia el número de columnas aquí para la orientación horizontal
-          childAspectRatio: 1.3,
-          shrinkWrap: true, // Ajusta la altura automáticamente
-          children: [
-            _roundedButton('assets/imageButton3.png', '/inspection', context, "Nueva Inspección"),
-            _roundedButton('assets/imageButton3.png', '/my_inspections', context, "Inspecciones Realizadas"),
-            // _roundedButton('assets/imageButton3.png', '/inspection', context, "Sincronizar"),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
+  Widget _buildHorizontalButtons(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          GridView.count(
+            crossAxisCount: 1, // Cambia el número de columnas aquí para la orientación horizontal
+            childAspectRatio: 4,
+            shrinkWrap: true, // Ajusta la altura automáticamente
+            children: [
+              _roundedButton('assets/imageButton3.png', '/inspection', context, "Nueva Inspección"),
+              // _roundedButton('assets/imageButton3.png', '/my_inspections', context, "Inspecciones Realizadas"),
+              // _roundedButton('assets/imageButton3.png', '/inspection', context, "Sincronizar"),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _roundedButton(String imageUrl, String pageRoute, BuildContext context, String buttonText) {
     return GestureDetector(

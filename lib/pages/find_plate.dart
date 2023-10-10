@@ -10,7 +10,6 @@ class FindPlatePage extends StatefulWidget {
   const FindPlatePage({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _FindPlatePageState createState() => _FindPlatePageState();
 }
 
@@ -18,11 +17,8 @@ class _FindPlatePageState extends State<FindPlatePage> {
   final TextEditingController _plateController = TextEditingController();
   bool _isPlateEmpty = true;
 
-  void _navigateToNewInspection() async {
-    final plate = _plateController.text;
-
+  void _navigateToNewInspectionWithData(String plate) async {
     try {
-      // Realizar la solicitud POST a la API
       final response = await http.post(
         Uri.parse('https://ibingcode.com/public/infovehiculo'),
         body: '{"placa": "$plate"}',
@@ -31,10 +27,8 @@ class _FindPlatePageState extends State<FindPlatePage> {
 
       if (response.statusCode == 200) {
         if (response.body.isEmpty) {
-          // Mostrar el mensaje cuando no se encuentren datos
           _showErrorMessage(
               'Vehículo no encontrado en la base de datos del RUNT.');
-          // ignore: use_build_context_synchronously
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -59,7 +53,6 @@ class _FindPlatePageState extends State<FindPlatePage> {
             String idPropietario = vehicleData['id_propietario'].toString();
             String nombrePropietario = vehicleData['nombre_propietario'];
 
-            // ignore: use_build_context_synchronously
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -109,6 +102,38 @@ class _FindPlatePageState extends State<FindPlatePage> {
     );
   }
 
+  void _validateAndNavigate() async {
+    final plate = _plateController.text;
+
+    if (plate.length != 6) {
+      _showErrorMessage('La placa debe tener exactamente 6 caracteres.');
+    } else {
+      try {
+        final validationResponse = await http.post(
+          Uri.parse('https://ibingcode.com/public/consultarplacas'),
+          body: '{"placa": "$plate"}',
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (validationResponse.statusCode == 200) {
+          final validationData = validationResponse.body;
+
+          if (validationData.toLowerCase() == 'true') {
+            _showErrorMessage('Ya existe una inspección registrada con esta placa.');
+          } else {
+            _navigateToNewInspectionWithData(plate);
+          }
+        } else {
+          _showErrorMessage(
+              'No se pudo validar la placa. Sin conexión con el servidor.');
+        }
+      } catch (e) {
+        _showErrorMessage(
+            'Error al comunicarse con el servidor de validación. Verifique su conexión a internet.$e');
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -131,7 +156,6 @@ class _FindPlatePageState extends State<FindPlatePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-  
       body: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
@@ -154,7 +178,6 @@ class _FindPlatePageState extends State<FindPlatePage> {
                       LengthLimitingTextInputFormatter(6),
                       UpperCaseTextFormatter(),
                     ],
-                    // focusNode: primaryFocus,
                     decoration: const InputDecoration(
                       hintText: 'INGRESE LA PLACA DEL VEHÍCULO',
                     ),
@@ -165,11 +188,9 @@ class _FindPlatePageState extends State<FindPlatePage> {
             ),
             ElevatedButton(
               style: AppTheme().buttonLightStyle,
-              onPressed: _isPlateEmpty ? null : _navigateToNewInspection,
-              //  onPressed: (){print('He presionado el boton');},
-
-              child:
-                  const Text('Inspeccionar', style: TextStyle(fontSize: 25.0)),
+              onPressed: _isPlateEmpty ? null : _validateAndNavigate,
+              child: const Text('Inspeccionar', style: TextStyle(fontSize: 25.0)
+              ),
             ),
           ],
         ),

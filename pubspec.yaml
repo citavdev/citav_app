@@ -46,6 +46,7 @@ dependencies:
   image: ^3.0.1
   flutter_exif_rotation: ^0.5.1
   flutter_camera: ^1.0.0
+  video_player: ^2.7.2
   
   
   

@@ -1,7 +1,4 @@
-// ignore_for_file: use_key_in_widget_constructors, no_leading_underscores_for_local_identifiers
-
 import 'dart:convert';
-
 import 'package:citav_app/pages/find_plate.dart';
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
@@ -11,6 +8,8 @@ import 'package:image_picker/image_picker.dart';
 import '../entities/user.dart';
 import 'package:http/http.dart' as http;
 
+import '../widgets/app_theme.dart';
+
 class AtypicalInspection extends StatefulWidget {
   final String plateValue;
 
@@ -19,7 +18,6 @@ class AtypicalInspection extends StatefulWidget {
   });
 
   @override
-  // ignore: library_private_types_in_public_api
   _AtypicalInspectionState createState() => _AtypicalInspectionState();
 }
 
@@ -27,32 +25,55 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
   Location location = Location();
   double? latitude;
   double? longitude;
-  DateTime? selectedDate; // Variable para almacenar la fecha seleccionada
-  String fechaIngreso =
-      ""; // Variable para mostrar la fecha en el cuadro de diálogo
+  DateTime? selectedDate;
+  String fechaIngreso = "";
+  List<File?> photos = List.generate(4, (_) => null);
+  List<FileInfo?> photosInfo = List.generate(4, (_) => null);
 
-  List<File?> photos =
-      List.generate(4, (_) => null); // Lista para almacenar las fotos
-  List<FileInfo?> photosInfo =
-      List.generate(4, (_) => null); // Información de las fotos
-
-  String selectedVehicleType = 'Automovil'; // Valor por defecto
-  String selectedCarBrand = 'Toyota'; // Valor por defecto
+  String selectedVehicleType = 'Automovil';
+  String selectedCarBrand = 'Toyota';
 
   List<String> vehicleTypes = [
     'Automovil',
-    'Camioneta',
     'Bus',
-    'TractoCamion',
+    'Camioneta',
     'Motocicleta',
+    'TractoCamion',
+    'otros',
   ];
 
   List<String> carBrands = [
-    'Toyota',
-    'Honda',
-    'Ford',
+    'Alfa Romeo',
+    'Audi',
+    'BMW',
+    'Cadillac',
     'Chevrolet',
+    'Chrysler',
+    'Citroën',
+    'Dodge',
+    'Fiat',
+    'Ford',
+    'Honda',
+    'Hyundai',
+    'Jaguar',
+    'Jeep',
+    'Kia',
+    'Land Rover',
+    'Mazda',
+    'Mercedes-Benz',
+    'Mini',
+    'Mitsubishi',
     'Nissan',
+    'Peugeot',
+    'Porsche',
+    'Ram',
+    'Renault',
+    'Subaru',
+    'Suzuki',
+    'Toyota',
+    'Volkswagen',
+    'Volvo',
+    'otros'
     // Agrega aquí las demás marcas de carros
   ];
 
@@ -93,7 +114,6 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
 
   Future<void> _takePhoto(int photoIndex) async {
     final picker = ImagePicker();
-    // ignore: deprecated_member_use
     final pickedFile = await picker.getImage(source: ImageSource.camera);
 
     if (pickedFile != null) {
@@ -118,164 +138,55 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
   }
 
   Widget _buildPhoto(int photoIndex) {
-    final photo = photos[photoIndex];
-    final fileInfo = photosInfo[photoIndex];
+  final photo = photos[photoIndex];
 
-    return Column(
-      children: [
-        photo != null
-            ? Image.file(
-                photo,
-                width: 100,
-                height: 100,
-                fit: BoxFit.cover,
-              )
-            : ElevatedButton(
-                onPressed: () => _takePhoto(photoIndex),
-                child: Text('Tomar Foto $photoIndex'),
+  return Column(
+    children: [
+      photo != null
+          ? Image.file(
+              photo,
+              width: 120,
+              height: 120,
+              fit: BoxFit.cover,
+            )
+          : Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: const Color(0xFF111D26),
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(8.0),
               ),
-        if (fileInfo != null)
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              'Formato: ${fileInfo.file.path.split('.').last}',
-              style: const TextStyle(fontSize: 16),
-            ),
-          ),
-        if (fileInfo != null)
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              'Peso: ${fileInfo.sizeInKB.toStringAsFixed(2)} KB',
-              style: const TextStyle(fontSize: 16),
-            ),
-          ),
-        if (fileInfo != null)
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              'Dimensiones: ${fileInfo.dimensions}',
-              style: const TextStyle(fontSize: 16),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Future<void> _sendDataToAPI() async {
-    final user = Provider.of<User>(context, listen: false);
-    final DateTime currentDate = DateTime.now();
-    final String formattedDate =
-        "${currentDate.year}-${currentDate.month}-${currentDate.day}";
-
-    final Map<String, dynamic> data = {
-      "placa": widget.plateValue,
-      "fecha_inspeccion": formattedDate,
-      "fecha_ingreso": "",
-      "estado": "1",
-      "id_funcionario": user.id,
-      "id_proyecto": "1",
-      "latitud": latitude.toString(),
-      "longitud": longitude.toString(),
-      "marca": selectedCarBrand,
-      "tipo_vehiculo": selectedVehicleType,
-      "multimedia": "multimedia/inspecciones/${widget.plateValue}",
-    };
-
-    const String apiUrl = 'https://ibingcode.com/public/inserta_inspeccion';
-
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode(data),
-    );
-
-    if (response.statusCode == 200) {
-      final jsonResponse = json.decode(response.body);
-      final respuesta = jsonResponse.toString();
-
-      if (respuesta.contains("0")) {
-        // Éxito al enviar los datos y se guardaron correctamente
-        // Muestra un mensaje de éxito
-        // ignore: use_build_context_synchronously
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text(''),
-            content: const Text(
-              'Inspeccion registrada satisfactoriamente',
-              style: TextStyle(fontSize: 25),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      // ignore: prefer_const_constructors
-                      builder: (context) => FindPlatePage()),
-                ),
-                child: const Text(
-                  'Aceptar',
-                  style: TextStyle(fontSize: 25),
+              child: InkWell(
+                onTap: () => _takePhoto(photoIndex),
+                child: Center(
+                  child: Icon(
+                    Icons.camera_alt, // Cambia a tu icono deseado
+                    size: 40,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-            ],
-          ),
-        );
-      } else if (respuesta.contains("1")) {
-        // ignore: use_build_context_synchronously
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text(''),
-            content: const Text(
-              'La placa ingresada ya cuenta con una inspeccion',
-              style: TextStyle(fontSize: 25),
             ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      // ignore: prefer_const_constructors
-                      builder: (context) => FindPlatePage()),
-                ),
-                child: const Text(
-                  'Aceptar',
-                  style: TextStyle(fontSize: 25),
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-    } else {
-      // Error al enviar los datos
-      // Puedes manejar el error de alguna manera aquí
-    }
-  }
+    ],
+  );
+}
 
   @override
   Widget build(BuildContext context) {
     String firstPart = widget.plateValue.substring(0, 3);
     String secondPart = widget.plateValue.substring(3, 6);
-    final user = Provider.of<User>(context);
-
-    TextStyle textStyle = const TextStyle(fontSize: 25.0);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Inspeccion sin informacion del RUNT',
+          'Inspección sin información del RUNT',
           style: TextStyle(
-            color: Colors.white, // Establece el color del texto en blanco
+            color: Colors.white,
           ),
         ),
         iconTheme: const IconThemeData(
-          color: Colors
-              .white, // Establece el color del icono de retroceso en blanco
+          color: Colors.white,
         ),
       ),
       body: Center(
@@ -300,6 +211,7 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
                         child: Text(
                           firstPart,
                           style: const TextStyle(
+                            fontFamily: 'Roboto Mono',
                             fontSize: 68,
                             fontWeight: FontWeight.bold,
                           ),
@@ -321,26 +233,11 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      if (latitude != null && longitude != null)
-                        _buildDataRow('Latitud', latitude.toString()),
-                      if (latitude != null && longitude != null)
-                        _buildDataRow('Longitud', longitude.toString()),
-                      _buildDataRow('Id inspector', user.id.toString()),
-                    ],
-                  ),
-                ),
-                // const SizedBox(height: 16),
                 Container(
                   constraints: const BoxConstraints(maxWidth: 800),
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
-                      // Agregar lista desplegable para el tipo de vehículo
                       DropdownButton<String>(
                         isExpanded: true,
                         value: selectedVehicleType,
@@ -356,8 +253,6 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
                           );
                         }).toList(),
                       ),
-
-                      // Agregar lista desplegable para la marca del automóvil
                       DropdownButton<String>(
                         isExpanded: true,
                         value: selectedCarBrand,
@@ -373,35 +268,39 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
                           );
                         }).toList(),
                       ),
+                      const SizedBox(height: 16),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          crossAxisSpacing: 16.0,
+                          mainAxisSpacing: 16.0,
+                          childAspectRatio: 1.0,
+                        ),
+                        itemCount: 4,
+                        itemBuilder: (context, index) {
+                          return _buildPhoto(index);
+                        },
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(16.0),
+                        child: ElevatedButton(
+                          style: AppTheme().buttonLightStyle,
+                          onPressed: () {
+                            _sendDataToAPI();
+                          },
+                          child: const Text(
+                            'Enviar Inspección',
+                            style: TextStyle(fontSize: 35),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      _sendDataToAPI();
-                    },
-                    child: const Text(
-                      'Enviar Inspección',
-                      style: TextStyle(fontSize: 35),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Column(
-                  children: [
-                    for (int i = 0; i < 4; i++)
-                      Column(
-                        children: [
-                          Text('Foto ${i + 1}', style: textStyle),
-                          _buildPhoto(i),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -410,25 +309,149 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
     );
   }
 
-  Widget _buildDataRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.start, // Alinea al centro
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 25.0,
-            fontWeight: FontWeight.bold,
+  Future<void> _sendDataToAPI() async {
+    final user = Provider.of<User>(context, listen: false);
+    final DateTime currentDate = DateTime.now();
+    final String formattedDate =
+        "${currentDate.year}-${currentDate.month}-${currentDate.day}";
+
+    bool allPhotosTaken = true;
+    for (int i = 0; i < photos.length; i++) {
+      if (photos[i] == null) {
+        allPhotosTaken = false;
+        break;
+      }
+    }
+
+    if (!allPhotosTaken) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error', style: TextStyle(fontSize: 25.0)),
+          content: const Text(
+            'Para continuar, por favor tome el registro fotográfico completo.',
+            style: TextStyle(fontSize: 25.0),
           ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Aceptar', style: TextStyle(fontSize: 25.0)),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
         ),
-        Text(
-          ': $value',
-          style: const TextStyle(
-            fontSize: 25.0,
+      );
+      return;
+    }
+
+    var postUri = Uri.parse('https://ibingcode.com/public/subirinspeccion');
+    http.MultipartRequest request = http.MultipartRequest("POST", postUri);
+    final Map<String, String> data = {
+      "placa": widget.plateValue,
+      "fecha_inspeccion": formattedDate,
+      "fecha_ingreso": "",
+      "estado": "1",
+      "id_funcionario": user.id.toString(),
+      "id_proyecto": "1",
+      "latitud": latitude.toString(),
+      "longitud": longitude.toString(),
+      "marca": selectedCarBrand,
+      "tipo_vehiculo": selectedVehicleType,
+      "multimedia": "multimedia/inspecciones/${widget.plateValue}",
+    };
+    for (var i = 0; i < photos.length; i++) {
+      if (photos[i] != null) {
+        http.MultipartFile multipartFile =
+            await http.MultipartFile.fromPath("image-$i", photos[i]!.path);
+        request.files.add(multipartFile);
+      }
+    }
+    request.fields.addAll(data);
+    http.StreamedResponse response = await request.send();
+    final respStr = await response.stream.bytesToString();
+
+    if (response.statusCode == 200) {
+      final jsonResponse = respStr;
+      final respuesta = jsonResponse.toString();
+
+      if (respuesta.contains("0")) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text(''),
+            content: const Text(
+              'Inspección registrada satisfactoriamente',
+              style: TextStyle(fontSize: 25),
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const FindPlatePage(),
+                  ),
+                ),
+                child: const Text(
+                  'Aceptar',
+                  style: TextStyle(fontSize: 25),
+                ),
+              ),
+            ],
           ),
+        );
+      } else if (respuesta.contains("1")) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text(''),
+            content: const Text(
+              'La placa ingresada ya cuenta con una inspección',
+              style: TextStyle(fontSize: 25),
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const FindPlatePage(),
+                  ),
+                ),
+                child: const Text(
+                  'Aceptar',
+                  style: TextStyle(fontSize: 25),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text(''),
+          content: const Text(
+            'Error de conexión con el servidor, favor informar al administrador',
+            style: TextStyle(fontSize: 25),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Aceptar',
+                style: TextStyle(fontSize: 25),
+              ),
+            ),
+          ],
         ),
-      ],
-    );
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 }
 

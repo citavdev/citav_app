@@ -375,32 +375,31 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
       final jsonResponse = respStr;
       final respuesta = jsonResponse.toString();
 
-      if (respuesta.contains("0")) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text(''),
-            content: const Text(
-              'Inspección registrada satisfactoriamente',
-              style: TextStyle(fontSize: 25),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const FindPlatePage(),
-                  ),
-                ),
-                child: const Text(
-                  'Aceptar',
-                  style: TextStyle(fontSize: 25),
-                ),
-              ),
-            ],
+if (respuesta.contains("0")) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text(''),
+      content: const Text(
+        'Inspección registrada satisfactoriamente',
+        style: TextStyle(fontSize: 25),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).popUntil((route) => route.isFirst); // Esto mantendrá solo la pantalla inicial (Home) en la pila
+          },
+          child: const Text(
+            'Aceptar',
+            style: TextStyle(fontSize: 25),
           ),
-        );
-      } else if (respuesta.contains("1")) {
+        ),
+      ],
+    ),
+  );
+}
+
+ else if (respuesta.contains("1")) {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(

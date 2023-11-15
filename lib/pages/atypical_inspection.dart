@@ -27,11 +27,13 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
   double? longitude;
   DateTime? selectedDate;
   String fechaIngreso = "";
-  List<File?> photos = List.generate(4, (_) => null);
-  List<FileInfo?> photosInfo = List.generate(4, (_) => null);
-
+  List<File?> photos = List.generate(7, (_) => null);
+  List<FileInfo?> photosInfo = List.generate(7, (_) => null);
+  String numeroChasis = "";
+  String numeroMotor = "";
   String selectedVehicleType = 'Automovil';
   String selectedCarBrand = 'Toyota';
+  bool isLoading = false;
 
   List<String> vehicleTypes = [
     'Automovil',
@@ -137,40 +139,53 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
     }
   }
 
-  Widget _buildPhoto(int photoIndex) {
-  final photo = photos[photoIndex];
+  Widget _buildPhoto(int photoIndex, String buttonText) {
+    final photo = photos[photoIndex];
 
-  return Column(
-    children: [
-      photo != null
-          ? Image.file(
-              photo,
-              width: 120,
-              height: 120,
-              fit: BoxFit.cover,
-            )
-          : Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: const Color(0xFF111D26),
-                shape: BoxShape.rectangle,
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              child: InkWell(
-                onTap: () => _takePhoto(photoIndex),
-                child: Center(
-                  child: Icon(
-                    Icons.camera_alt, // Cambia a tu icono deseado
-                    size: 40,
-                    color: Colors.white,
+    return Column(
+      children: [
+        photo != null
+            ? Image.file(
+                photo,
+                width: 120,
+                height: 120,
+                fit: BoxFit.cover,
+              )
+            : Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111D26),
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                child: InkWell(
+                  onTap: () => _takePhoto(photoIndex),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Align(
+                        alignment: Alignment.center,
+                        child: Text(
+                          buttonText, // Texto personalizado
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.camera_alt,
+                        size: 40,
+                        color: Colors.white,
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
-    ],
-  );
-}
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -238,35 +253,78 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
-                      DropdownButton<String>(
-                        isExpanded: true,
-                        value: selectedVehicleType,
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            selectedVehicleType = newValue!;
-                          });
-                        },
-                        items: vehicleTypes.map((String type) {
-                          return DropdownMenuItem<String>(
-                            value: type,
-                            child: Text(type),
-                          );
-                        }).toList(),
+                      Container(
+                        height:
+                            80, // Ajusta la altura del control según tus necesidades
+                        child: Center(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            hint: const Text(
+                              'Selecciona un tipo de vehículo', // Aquí está el hint
+                            ),
+                            value: selectedVehicleType,
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                selectedVehicleType = newValue!;
+                              });
+                            },
+                            items: vehicleTypes.map((String type) {
+                              return DropdownMenuItem<String>(
+                                value: type,
+                                child: Text(
+                                  type,
+                                  style: TextStyle(
+                                    fontSize: 25,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
                       ),
-                      DropdownButton<String>(
-                        isExpanded: true,
-                        value: selectedCarBrand,
-                        onChanged: (String? newValue) {
+                      Container(
+                        height: 60,
+                        child: Center(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            value: selectedCarBrand,
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                selectedCarBrand = newValue!;
+                              });
+                            },
+                            items: carBrands.map((String brand) {
+                              return DropdownMenuItem<String>(
+                                value: brand,
+                                child: Text(
+                                  brand,
+                                  style: TextStyle(
+                                    fontSize:
+                                        25, // Ajusta el tamaño de fuente aquí
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                      TextField(
+                        decoration:
+                            InputDecoration(labelText: 'Número de Motor'),
+                        onChanged: (value) {
                           setState(() {
-                            selectedCarBrand = newValue!;
+                            numeroMotor = value;
                           });
                         },
-                        items: carBrands.map((String brand) {
-                          return DropdownMenuItem<String>(
-                            value: brand,
-                            child: Text(brand),
-                          );
-                        }).toList(),
+                      ),
+                      TextField(
+                        decoration:
+                            InputDecoration(labelText: 'Número de Chasis'),
+                        onChanged: (value) {
+                          setState(() {
+                            numeroChasis = value;
+                          });
+                        },
                       ),
                       const SizedBox(height: 16),
                       GridView.builder(
@@ -275,27 +333,48 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 4,
-                          crossAxisSpacing: 16.0,
-                          mainAxisSpacing: 16.0,
+                          crossAxisSpacing: 1.0,
+                          mainAxisSpacing: 1.0,
                           childAspectRatio: 1.0,
                         ),
-                        itemCount: 4,
+                        itemCount: 7,
                         itemBuilder: (context, index) {
-                          return _buildPhoto(index);
+                          List<String> buttonTexts = [
+                            "Placa",
+                            "Nro Chasis",
+                            "Nro Motor",
+                            "Nro Serie",
+                            "Vehiculo\nanterior",
+                            "Vehiculo\nposterior",
+                            "   Motor\ncompleto",
+                          ];
+
+                          String buttonText = buttonTexts[index];
+                          return _buildPhoto(index, buttonText);
                         },
                       ),
                       Container(
                         padding: const EdgeInsets.all(16.0),
-                        child: ElevatedButton(
-                          style: AppTheme().buttonLightStyle,
-                          onPressed: () {
-                            _sendDataToAPI();
-                          },
-                          child: const Text(
-                            'Enviar Inspección',
-                            style: TextStyle(fontSize: 35),
+                       child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        if (!isLoading)
+                          ElevatedButton(
+                            onPressed: () => _sendDataToAPI(),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 20),
+                              textStyle: const TextStyle(
+                                fontSize: 35,
+                              ),
+                              backgroundColor: const Color.fromRGBO(244,157,76,1), // Cambia el color de fondo
+                              foregroundColor: Colors.white
+                            ),
+                            child: const Text('     Enviar inspección     '),
                           ),
-                        ),
+                        if (isLoading)
+                          const CircularProgressIndicator(), // Indicador de carga
+                      ],
+                    ),
                       ),
                     ],
                   ),
@@ -316,6 +395,11 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
         "${currentDate.year}-${currentDate.month}-${currentDate.day}";
 
     bool allPhotosTaken = true;
+
+    setState(() {
+      isLoading = true;
+    });
+
     for (int i = 0; i < photos.length; i++) {
       if (photos[i] == null) {
         allPhotosTaken = false;
@@ -324,6 +408,7 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
     }
 
     if (!allPhotosTaken) {
+      isLoading = false;
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -332,6 +417,7 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
             'Para continuar, por favor tome el registro fotográfico completo.',
             style: TextStyle(fontSize: 25.0),
           ),
+          
           actions: <Widget>[
             TextButton(
               child: const Text('Aceptar', style: TextStyle(fontSize: 25.0)),
@@ -359,6 +445,8 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
       "marca": selectedCarBrand,
       "tipo_vehiculo": selectedVehicleType,
       "multimedia": "multimedia/inspecciones/${widget.plateValue}",
+      "numeromotor": numeroMotor,
+      "numerochasis": numeroChasis,
     };
     for (var i = 0; i < photos.length; i++) {
       if (photos[i] != null) {
@@ -370,36 +458,40 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
     request.fields.addAll(data);
     http.StreamedResponse response = await request.send();
     final respStr = await response.stream.bytesToString();
+    setState(() {
+      isLoading = false;
+    });
 
     if (response.statusCode == 200) {
       final jsonResponse = respStr;
       final respuesta = jsonResponse.toString();
 
-if (respuesta.contains("0")) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text(''),
-      content: const Text(
-        'Inspección registrada satisfactoriamente',
-        style: TextStyle(fontSize: 25),
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).popUntil((route) => route.isFirst); // Esto mantendrá solo la pantalla inicial (Home) en la pila
-          },
-          child: const Text(
-            'Aceptar',
-            style: TextStyle(fontSize: 25),
+      if (respuesta.contains("0")) {
+        isLoading = false;
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text(''),
+            content: const Text(
+              'Inspección registrada satisfactoriamente',
+              style: TextStyle(fontSize: 25),
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).popUntil((route) => route
+                      .isFirst); // Esto mantendrá solo la pantalla inicial (Home) en la pila
+                },
+                child: const Text(
+                  'Aceptar',
+                  style: TextStyle(fontSize: 25),
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
-    ),
-  );
-}
-
- else if (respuesta.contains("1")) {
+        );
+      } else if (respuesta.contains("1")) {
+        isLoading = false;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -426,6 +518,7 @@ if (respuesta.contains("0")) {
         );
       }
     } else {
+      isLoading = false;
       showDialog(
         context: context,
         builder: (context) => AlertDialog(

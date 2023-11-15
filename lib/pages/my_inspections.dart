@@ -51,7 +51,7 @@ class _MyInspectionsPageState extends State<MyInspectionsPage> {
 
   Future<void> _fetchInspections() async {
     const apiUrl = 'https://ibingcode.com/public/listarInspecciones';
-    final requestBody = jsonEncode({"fecha_inspeccion": selectedDate});
+    final requestBody = jsonEncode({"fecha_inspeccion": '2023-10-12'});
 
     try {
       setState(() {
@@ -70,9 +70,9 @@ class _MyInspectionsPageState extends State<MyInspectionsPage> {
 
         final List<Inspeccion> fetchedInspections = responseData
             .map((inspeccionData) => Inspeccion(
-                  placa: inspeccionData['placa'],
-                  hora: inspeccionData['hora'],
-                  tipo: inspeccionData['tipo_vehiculo'],
+                  placa: inspeccionData['placa'] ?? '', // Verifica si es nulo
+                  hora: inspeccionData['hora'] ?? '', // Verifica si es nulo
+                  tipo: inspeccionData['tipo_vehiculo'] ?? '', // Verifica si es nulo
                   estado: inspeccionData['estado'] == 'Aprobada',
                 ))
             .toList();
@@ -92,7 +92,7 @@ class _MyInspectionsPageState extends State<MyInspectionsPage> {
         });
       }
     } catch (error) {
-      // print('Error fetching inspections: $error');
+      print('Error fetching inspections: $error');
       logger.log('Error fetching inspections: $error');
       setState(() {
         isLoading = false;
@@ -104,7 +104,15 @@ class _MyInspectionsPageState extends State<MyInspectionsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inspecciones realizadas'),
+        title: const Text(
+          'Inspecciones realizadas',
+          style: TextStyle(
+            color: Colors.white,
+          ),
+        ),
+        iconTheme: const IconThemeData(
+          color: Colors.white,
+        ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(64.0),
           child: MyTabBar(),
@@ -205,7 +213,7 @@ class MyTabBar extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10.0),
             side: const BorderSide(
-              color: Colors.green,
+              color: Color.fromARGB(255, 252, 124, 20),
               width: 2.0,
             ),
           ),
@@ -217,11 +225,13 @@ class MyTabBar extends StatelessWidget {
             ),
         ],
         labelStyle: const TextStyle(fontSize: 30),
+        labelColor: Colors.white,
+        unselectedLabelColor: Color.fromARGB(255, 126, 125, 125),
       ),
     );
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat('d/MM/yy').format(date);
+    return DateFormat('yyyy-MM-dd').format(date);
   }
 }

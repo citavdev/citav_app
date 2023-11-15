@@ -36,6 +36,7 @@ class HomePage extends StatelessWidget {
             builder: (BuildContext context, Orientation orientation) {
               if (orientation == Orientation.portrait) {
                 // Diseño para orientación vertical
+                 const SizedBox(height: 100);
                 return _buildButtons(context);
               } else {
                 // Diseño para orientación horizontal
@@ -49,16 +50,21 @@ class HomePage extends StatelessWidget {
   }
 
   Widget _buildButtons(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 1, // Cambia el número de columnas aquí
-      childAspectRatio: 2.5,
-      mainAxisSpacing: 45.0,
-      children: [
-        const SizedBox(height: 50),
-         _roundedButton('assets/imageButton3.png', '/inspection', context, "Nueva \n Inspección"),
-        // _roundedButton('assets/imageButton3.png', '/my_inspections', context, "Inspecciones \n Realizadas"),
-        // _roundedButton('assets/imageButton3.png', '/inspection', context, "Sincronizar"),
-      ],
+    
+    return Center(
+      child: GridView.count(
+        crossAxisCount: 1, // Cambia el número de columnas aquí
+        childAspectRatio: 2.5,
+        mainAxisSpacing: 45.0,
+        children: [
+           SizedBox(
+      height: 20.0, // Ajusta la altura según tus necesidades
+    ),
+           _roundedButton('assets/imageButton3.png', '/inspection', context, "Nueva \n Inspección"),
+          // _roundedButton('assets/imageButton3.png', '/my_inspections', context, "Inspecciones \n Realizadas"),
+          // _roundedButton('assets/imageButton3.png', '/inspection', context, "Sincronizar"),
+        ],
+      ),
     );
   }
 

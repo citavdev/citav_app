@@ -72,15 +72,39 @@ class _FindPlatePageState extends State<FindPlatePage> {
           } else {
             _showErrorMessage(
                 'Vehículo no encontrado en la base de datos del RUNT.');
+                          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AtypicalInspection(
+                plateValue: plate,
+              ),
+            ),
+          );
           }
         }
       } else {
         _showErrorMessage(
             'No se pudo obtener información del vehículo. Sin conexión con el servidor.');
+            Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AtypicalInspection(
+                plateValue: plate,
+              ),
+            ),
+          );
       }
     } catch (e) {
       _showErrorMessage(
           'Error al comunicarse con el servidor. Verifique su conexión a internet.$e');
+                    Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AtypicalInspection(
+                plateValue: plate,
+              ),
+            ),
+          );
     }
   }
 
@@ -155,7 +179,19 @@ class _FindPlatePageState extends State<FindPlatePage> {
 
   @override
   Widget build(BuildContext context) {
+    
     return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          '',
+          style: TextStyle(
+            color: Colors.white,
+          ),
+        ),
+        iconTheme: const IconThemeData(
+          color: Colors.white,
+        ),
+      ),
       body: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(

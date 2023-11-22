@@ -16,6 +16,7 @@ class FindPlatePage extends StatefulWidget {
 class _FindPlatePageState extends State<FindPlatePage> {
   final TextEditingController _plateController = TextEditingController();
   bool _isPlateEmpty = true;
+  bool _isVehicleWithoutPlate = false;
 
   void _navigateToNewInspectionWithData(String plate) async {
     try {
@@ -57,54 +58,55 @@ class _FindPlatePageState extends State<FindPlatePage> {
               context,
               MaterialPageRoute(
                 builder: (context) => NewInspection(
-                    plateValue: plate,
-                    modelo: modelo,
-                    numeroChasis: numeroChasis,
-                    numeroMotor: numeroMotor,
-                    marca: marca,
-                    tipoServicio: tipoServicio,
-                    tipoVehiculo: tipoVehiculo,
-                    organismoTransito: organismoTransito,
-                    idPropietario: idPropietario,
-                    nombrePropietario: nombrePropietario),
+                  plateValue: plate,
+                  modelo: modelo,
+                  numeroChasis: numeroChasis,
+                  numeroMotor: numeroMotor,
+                  marca: marca,
+                  tipoServicio: tipoServicio,
+                  tipoVehiculo: tipoVehiculo,
+                  organismoTransito: organismoTransito,
+                  idPropietario: idPropietario,
+                  nombrePropietario: nombrePropietario,
+                ),
               ),
             );
           } else {
             _showErrorMessage(
                 'Vehículo no encontrado en la base de datos del RUNT.');
-                          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AtypicalInspection(
-                plateValue: plate,
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AtypicalInspection(
+                  plateValue: plate,
+                ),
               ),
-            ),
-          );
+            );
           }
         }
       } else {
         _showErrorMessage(
             'No se pudo obtener información del vehículo. Sin conexión con el servidor.');
-            Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AtypicalInspection(
-                plateValue: plate,
-              ),
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AtypicalInspection(
+              plateValue: plate,
             ),
-          );
+          ),
+        );
       }
     } catch (e) {
       _showErrorMessage(
           'Error al comunicarse con el servidor. Verifique su conexión a internet.$e');
-                    Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AtypicalInspection(
-                plateValue: plate,
-              ),
-            ),
-          );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AtypicalInspection(
+            plateValue: plate,
+          ),
+        ),
+      );
     }
   }
 
@@ -129,33 +131,42 @@ class _FindPlatePageState extends State<FindPlatePage> {
   void _validateAndNavigate() async {
     final plate = _plateController.text;
 
-    if (plate.length != 6) {
-      _showErrorMessage('La placa debe tener exactamente 6 caracteres.');
-    } else {
-      try {
-        final validationResponse = await http.post(
-          Uri.parse('https://ibingcode.com/public/consultarplacas'),
-          body: '{"placa": "$plate"}',
-          headers: {'Content-Type': 'application/json'},
-        );
+    if (!_isVehicleWithoutPlate) {
+      if (plate.length != 6) {
+        _showErrorMessage('La placa debe tener exactamente 6 caracteres.');
+      } else {
+        try {
+          final validationResponse = await http.post(
+            Uri.parse('https://ibingcode.com/public/consultarplacas'),
+            body: '{"placa": "$plate"}',
+            headers: {'Content-Type': 'application/json'},
+          );
 
-        if (validationResponse.statusCode == 200) {
-          final validationData = validationResponse.body;
+          if (validationResponse.statusCode == 200) {
+            final validationData = validationResponse.body;
 
-          if (validationData.toLowerCase() == 'true') {
-            _showErrorMessage('Ya existe una inspección registrada con esta placa.');
+            if (validationData.toLowerCase() == 'true') {
+              _showErrorMessage(
+                  'Ya existe una inspección registrada con esta placa.');
+            } else {
+              _navigateToNewInspectionWithData(plate);
+            }
           } else {
-            _navigateToNewInspectionWithData(plate);
+            _showErrorMessage(
+                'No se pudo validar la placa. Sin conexión con el servidor.');
           }
-        } else {
+        } catch (e) {
           _showErrorMessage(
-              'No se pudo validar la placa. Sin conexión con el servidor.');
+              'Error al comunicarse con el servidor de validación. Verifique su conexión a internet.$e');
         }
-      } catch (e) {
-        _showErrorMessage(
-            'Error al comunicarse con el servidor de validación. Verifique su conexión a internet.$e');
       }
+    } else {
+      _navigateToNewInspectionWithData('000000');
     }
+  }
+
+  void _navigateToNewInspectionWithoutPlate() {
+    _navigateToNewInspectionWithData('000000');
   }
 
   @override
@@ -179,7 +190,6 @@ class _FindPlatePageState extends State<FindPlatePage> {
 
   @override
   Widget build(BuildContext context) {
-    
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -207,26 +217,44 @@ class _FindPlatePageState extends State<FindPlatePage> {
               child: Center(
                 child: SizedBox(
                   width: 450,
-                  child: TextField(
-                    controller: _plateController,
-                    textAlign: TextAlign.center,
-                    inputFormatters: [
-                      LengthLimitingTextInputFormatter(6),
-                      UpperCaseTextFormatter(),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _plateController,
+                        textAlign: TextAlign.center,
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(6),
+                          UpperCaseTextFormatter(),
+                        ],
+                        decoration: InputDecoration(
+                          hintText: 'INGRESE LA PLACA DEL VEHÍCULO',
+                        ),
+                        style: const TextStyle(fontSize: 25.0),
+                        enabled: !_isVehicleWithoutPlate,
+                      ),
+                      CheckboxListTile(
+                        title: const Text('Vehículo sin placa'),
+                        value: _isVehicleWithoutPlate,
+                        onChanged: (value) {
+                          setState(() {
+                            _isVehicleWithoutPlate = value!;
+                            if (value!) {
+                              _plateController.text = '';
+                            }
+                          });
+                        },
+                      ),
                     ],
-                    decoration: const InputDecoration(
-                      hintText: 'INGRESE LA PLACA DEL VEHÍCULO',
-                    ),
-                    style: const TextStyle(fontSize: 25.0),
                   ),
                 ),
               ),
             ),
             ElevatedButton(
               style: AppTheme().buttonLightStyle,
-              onPressed: _isPlateEmpty ? null : _validateAndNavigate,
-              child: const Text('Inspeccionar', style: TextStyle(fontSize: 25.0)
-              ),
+              onPressed: _isVehicleWithoutPlate
+                  ? _navigateToNewInspectionWithoutPlate
+                  : _validateAndNavigate,
+              child: const Text('Inspeccionar', style: TextStyle(fontSize: 25.0)),
             ),
           ],
         ),

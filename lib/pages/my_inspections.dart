@@ -1,237 +1,221 @@
 import 'package:flutter/material.dart';
-import 'package:ftpconnect/ftpconnect.dart';
-import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
+import 'dart:io';
+
+void main() {
+  runApp(MyInspectionsPage());
+}
 
 class Inspeccion {
+  final int id;
+  final String fechaInspeccion;
+  final String latitud;
+  final String longitud;
+  final String fechaIngreso;
+  final String estado;
+  final int idFuncionario;
+  final int idProyecto;
   final String placa;
-  final String hora;
-  final String tipo;
-  final bool estado;
+  final String multimedia;
+  final String modelo;
+  final String numeroChasis;
+  final String numeroMotor;
+  final String marca;
+  final String tipoServicio;
+  final String tipoVehiculo;
+  final String organismoTransito;
+  final int idPropietario;
+  final String nombrePropietario;
 
   Inspeccion({
-    required this.placa,
-    required this.hora,
-    required this.tipo,
+    required this.id,
+    required this.fechaInspeccion,
+    required this.latitud,
+    required this.longitud,
+    required this.fechaIngreso,
     required this.estado,
+    required this.idFuncionario,
+    required this.idProyecto,
+    required this.placa,
+    required this.multimedia,
+    required this.modelo,
+    required this.numeroChasis,
+    required this.numeroMotor,
+    required this.marca,
+    required this.tipoServicio,
+    required this.tipoVehiculo,
+    required this.organismoTransito,
+    required this.idPropietario,
+    required this.nombrePropietario,
   });
+
+  factory Inspeccion.fromJson(Map<String, dynamic> json) {
+    return Inspeccion(
+      id: json['id_inspeccion'] ?? 0,
+      fechaInspeccion: json['fecha_inspeccion'] ?? '',
+      latitud: json['latitud'] ?? '',
+      longitud: json['longitud'] ?? '',
+      fechaIngreso: json['fecha_ingreso'] ?? '',
+      estado: json['estado'] ?? '',
+      idFuncionario: json['id_funcionario'] ?? 0,
+      idProyecto: json['id_proyecto'] ?? 0,
+      placa: json['placa'] ?? '',
+      multimedia: json['multimedia'] ?? '',
+      modelo: json['v.modelo'] ?? '',
+      numeroChasis: json['numero_chasis'] ?? '',
+      numeroMotor: json['numero_motor'] ?? '',
+      marca: json['marca'] ?? '',
+      tipoServicio: json['tipo_servicio'] ?? '',
+      tipoVehiculo: json['tipo_vehiculo'] ?? '',
+      organismoTransito: json['organismo_transito'] ?? '',
+      idPropietario: json['id_propietario'] ?? 0,
+      nombrePropietario: json['nombre_propietario'] ?? '',
+    );
+  }
 }
 
-class MyInspectionsPage extends StatefulWidget {
-  const MyInspectionsPage({super.key});
-
+class MyInspectionsPage extends StatelessWidget {
   @override
-  // ignore: library_private_types_in_public_api
-  _MyInspectionsPageState createState() => _MyInspectionsPageState();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Lista de Inspecciones',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: MyHomePage(),
+    );
+  }
 }
 
-class _MyInspectionsPageState extends State<MyInspectionsPage> {
-  final logger = Logger();
+class MyHomePage extends StatefulWidget {
+  @override
+  _MyHomePageState createState() => _MyHomePageState();
+}
 
-  final List<DateTime> previousDates = [
-    DateTime.now().subtract(const Duration(days: 4)),
-    DateTime.now().subtract(const Duration(days: 3)),
-    DateTime.now().subtract(const Duration(days: 2)),
-    DateTime.now().subtract(const Duration(days: 1)),
-    DateTime.now(),
-  ];
-
+class _MyHomePageState extends State<MyHomePage> {
   List<Inspeccion> inspecciones = [];
-  bool isLoading = false;
-  String jsonResponse = "";
-  String jsonRequest = ""; // Variable para almacenar el JSON de la solicitud
-  String selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now()); // Fecha seleccionada
 
   @override
   void initState() {
     super.initState();
-    _fetchInspections();
+    _loadInspections();
   }
 
-  Future<void> _fetchInspections() async {
-    const apiUrl = 'https://ibingcode.com/public/listarInspecciones';
-    final requestBody = jsonEncode({"fecha_inspeccion": '2023-10-12'});
+  Future<void> _loadInspections() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final filePath = '${directory.path}/tus_datos.json';
 
     try {
+      final File file = File(filePath);
+      final String fileContent = await file.readAsString();
+      final List<dynamic> responseData = jsonDecode(fileContent);
+
+      List<Inspeccion> fetchedInspections = responseData
+          .map((inspeccionData) => Inspeccion.fromJson(inspeccionData))
+          .toList();
+
       setState(() {
-        isLoading = true;
-        jsonRequest = requestBody; // Guarda el JSON de la solicitud
+        inspecciones = fetchedInspections;
       });
-
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {"Content-Type": "application/json"},
-        body: requestBody,
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> responseData = jsonDecode(response.body);
-
-        final List<Inspeccion> fetchedInspections = responseData
-            .map((inspeccionData) => Inspeccion(
-                  placa: inspeccionData['placa'] ?? '', // Verifica si es nulo
-                  hora: inspeccionData['hora'] ?? '', // Verifica si es nulo
-                  tipo: inspeccionData['tipo_vehiculo'] ?? '', // Verifica si es nulo
-                  estado: inspeccionData['estado'] == 'Aprobada',
-                ))
-            .toList();
-
-        setState(() {
-          inspecciones = fetchedInspections;
-          isLoading = false;
-          jsonResponse = response.body; // Guarda el JSON de la respuesta
-        });
-      } else {
-        // print('Failed to fetch inspections: ${response.statusCode}');
-        logger.log('Failed to fetch inspections: ${response.statusCode}');
-
-        setState(() {
-          isLoading = false;
-          jsonResponse = response.body; // Guarda el JSON de la respuesta en caso de error
-        });
-      }
     } catch (error) {
-      print('Error fetching inspections: $error');
-      logger.log('Error fetching inspections: $error');
-      setState(() {
-        isLoading = false;
-      });
+      print('Error reading file: $error');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Inspecciones realizadas',
+    return DefaultTabController(
+      length: _getUniqueDates().length,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Lista de Inspecciones'),
+          bottom: TabBar(
+  tabs: _getUniqueDates().map((date) {
+    int inspectionsCount = _getInspectionsCountByDate(date);
+    return Tab(
+      child: RichText(
+        text: TextSpan(
+          text: '$date ',
           style: TextStyle(
-            color: Colors.white,
+            fontWeight: FontWeight.bold, // Estilo de texto en negrita solo para la fecha
           ),
+          children: [
+            TextSpan(
+              text: '($inspectionsCount)',
+              style: TextStyle(fontWeight: FontWeight.normal), // Estilo normal para el contador
+            ),
+          ],
         ),
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(64.0),
-          child: MyTabBar(),
-        ),
-      ),
-      body: Center(
-        child: isLoading
-            ? const CircularProgressIndicator()
-            : inspecciones.isEmpty
-                ? Column(
-                    children: [
-                      const Text('No hay inspecciones en esta fecha.'),
-                      const Text('JSON de la Solicitud:'),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Text(jsonRequest), // Muestra el JSON de la solicitud
-                        ),
-                      ),
-                      const Text('JSON de la Respuesta:'),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Text(jsonResponse), // Muestra el JSON de la respuesta
-                        ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: inspecciones.length,
-                          itemBuilder: (context, index) {
-                            return _buildInspeccionCard(inspecciones[index]);
-                          },
-                        ),
-                      ),
-                      const Text('JSON de la Solicitud:'),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Text(jsonRequest), // Muestra el JSON de la solicitud
-                        ),
-                      ),
-                      const Text('JSON de la Respuesta:'),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Text(jsonResponse), // Muestra el JSON de la respuesta
-                        ),
-                      ),
-                    ],
-                  ),
       ),
     );
+  }).toList(),
+),
+        ),
+        body: TabBarView(
+          children: _getUniqueDates().map((date) {
+            return _buildInspectionListByDate(date);
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  int _getInspectionsCountByDate(String date) {
+    return inspecciones.where((inspeccion) => inspeccion.fechaInspeccion == date).length;
+  }
+
+  Widget _buildInspectionListByDate(String date) {
+    List<Inspeccion> inspectionsByDate = inspecciones
+        .where((inspeccion) => inspeccion.fechaInspeccion == date)
+        .toList();
+
+    return ListView.builder(
+      itemCount: inspectionsByDate.length,
+      itemBuilder: (context, index) {
+        return _buildInspeccionCard(inspectionsByDate[index]);
+      },
+    );
+  }
+
+  List<String> _getUniqueDates() {
+    return inspecciones.map((inspeccion) => inspeccion.fechaInspeccion).toSet().toList();
   }
 
   Widget _buildInspeccionCard(Inspeccion inspeccion) {
+    IconData iconData;
+    Color iconColor;
+
+    if (inspeccion.estado == '1') {
+      // Estado 1: Aprobada (Icono verde)
+      iconData = Icons.check;
+      iconColor = Colors.green;
+    } else {
+      // Otro estado: Rechazada (Icono rojo)
+      iconData = Icons.close;
+      iconColor = Colors.red;
+    }
+
     return Card(
       elevation: 4,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.all(8),
       child: ListTile(
-        title: Text(inspeccion.placa),
+        title: Text('Placa: ${inspeccion.placa}'),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Tipo: ${inspeccion.tipo}'),
-            Text(inspeccion.hora),
+            Text('Tipo de Vehículo: ${inspeccion.tipoVehiculo}'),
+            Text('Fecha: ${inspeccion.fechaInspeccion}'),
+            Row(
+              children: [
+                Icon(iconData, color: iconColor),
+                SizedBox(width: 8),
+                Text('Estado: ${inspeccion.estado == '1' ? 'Aprobada' : 'Rechazada'}'),
+              ],
+            ),
           ],
         ),
-        trailing: CircleAvatar(
-          backgroundColor: inspeccion.estado ? Colors.green : Colors.red,
-          child: Icon(
-            inspeccion.estado ? Icons.check : Icons.close,
-            color: Colors.white,
-          ),
-        ),
       ),
     );
-  }
-}
-
-// ignore: use_key_in_widget_constructors
-class MyTabBar extends StatelessWidget {
-  final List<DateTime> previousDates = [
-    DateTime.now().subtract(const Duration(days: 4)),
-    DateTime.now().subtract(const Duration(days: 3)),
-    DateTime.now().subtract(const Duration(days: 2)),
-    DateTime.now().subtract(const Duration(days: 1)),
-    DateTime.now(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 5,
-      initialIndex: previousDates.length - 1,
-      child: TabBar(
-        isScrollable: true,
-        indicator: ShapeDecoration(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.0),
-            side: const BorderSide(
-              color: Color.fromARGB(255, 252, 124, 20),
-              width: 2.0,
-            ),
-          ),
-        ),
-        tabs: [
-          for (DateTime date in previousDates)
-            Tab(
-              text: _formatDate(date),
-            ),
-        ],
-        labelStyle: const TextStyle(fontSize: 30),
-        labelColor: Colors.white,
-        unselectedLabelColor: Color.fromARGB(255, 126, 125, 125),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return DateFormat('yyyy-MM-dd').format(date);
   }
 }

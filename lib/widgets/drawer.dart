@@ -71,7 +71,7 @@ class DrawerPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.list),
             title: const Text('Inspec. Realizadas'),
-            enabled: false,
+            enabled: true,
             onTap: () {
               Navigator.of(context).pop(); // Cerrar el Drawer
               Navigator.pushNamed(context, '/my_inspections');

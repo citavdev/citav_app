@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io'; // Importa la biblioteca de manejo de archivos
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../entities/user.dart';
 import '../widgets/app_theme.dart';
+import 'package:path_provider/path_provider.dart';
 import 'home.dart';
 import 'package:http/http.dart' as http;
 
@@ -17,6 +19,33 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool isLoading = false;
+
+Future<void> _fetchData() async {
+  const String apiUrl = 'https://ibingcode.com/public/listar5Inspecciones';
+
+  try {
+    final response = await http.post(Uri.parse(apiUrl));
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body);
+
+      final directory = await getApplicationDocumentsDirectory();
+      final filePath = '${directory.path}/tus_datos.json';
+
+      // Verifica si el directorio existe, si no, créalo
+      if (!(await Directory(directory.path).exists())) {
+        await Directory(directory.path).create(recursive: true);
+      }
+
+      final file = File(filePath);
+      await file.writeAsString(json.encode(jsonData));
+    } else {
+      print('Error al obtener datos de la API');
+    }
+  } catch (e) {
+    print('Error de conexión: $e');
+  }
+}
 
   Future<void> _login(BuildContext context) async {
     setState(() {
@@ -50,6 +79,8 @@ class _LoginPageState extends State<LoginPage> {
             id: jsonResponse['cedula'].toString(),
             token: jsonResponse['token'],
           );
+
+          await _fetchData(); // Llama a _fetchData después de iniciar sesión
 
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const HomePage()),

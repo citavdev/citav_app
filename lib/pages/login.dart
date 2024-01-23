@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io'; // Importa la biblioteca de manejo de archivos
+import 'package:citav_app/entities/apiService.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../entities/user.dart';
@@ -21,7 +22,7 @@ class _LoginPageState extends State<LoginPage> {
   bool isLoading = false;
 
 Future<void> _fetchData() async {
-  const String apiUrl = 'https://ibingcode.com/public/listar5Inspecciones';
+  const String apiUrl = 'https://ibingcode.com/public/listar5Inspecciones_test';
 
   try {
     final response = await http.post(Uri.parse(apiUrl));
@@ -31,6 +32,11 @@ Future<void> _fetchData() async {
 
       final directory = await getApplicationDocumentsDirectory();
       final filePath = '${directory.path}/tus_datos.json';
+
+      // Elimina el archivo existente antes de escribir los nuevos datos
+      if (await File(filePath).exists()) {
+        await File(filePath).delete();
+      }
 
       // Verifica si el directorio existe, si no, créalo
       if (!(await Directory(directory.path).exists())) {
@@ -46,6 +52,7 @@ Future<void> _fetchData() async {
     print('Error de conexión: $e');
   }
 }
+
 
   Future<void> _login(BuildContext context) async {
     setState(() {
@@ -81,6 +88,7 @@ Future<void> _fetchData() async {
           );
 
           await _fetchData(); // Llama a _fetchData después de iniciar sesión
+          await ApiService().fetchDataAndStoreLocally();
 
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const HomePage()),

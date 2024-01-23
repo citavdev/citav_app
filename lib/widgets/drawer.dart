@@ -54,10 +54,11 @@ class DrawerPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.sync),
             title: const Text('Sincronizar'),
-            enabled: false,
+            enabled: true,
             onTap: () {
               // Lógica para sincronizar
               Navigator.of(context).pop(); // Cerrar el Drawer
+              Navigator.pushNamed(context, '/inspectionsList');
             },
           ),
           ListTile(

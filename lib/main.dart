@@ -1,3 +1,4 @@
+import 'package:citav_app/pages/InspectionsListScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'entities/user.dart';
@@ -30,6 +31,8 @@ class MyApp extends StatelessWidget {
               return MaterialPageRoute(builder: (context) => const FindPlatePage());
             case '/my_inspections':
               return MaterialPageRoute(builder: (context) =>  MyInspectionsPage());
+            case '/inspectionsList': 
+            return MaterialPageRoute(builder: (context) => InspectionsListScreen());
             default:
               return null;
           }

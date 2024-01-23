@@ -1,14 +1,17 @@
 import 'dart:convert';
+import 'package:citav_app/entities/localInspection.dart';
 import 'package:citav_app/pages/find_plate.dart';
+import 'package:connectivity/connectivity.dart';
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../entities/user.dart';
 import 'package:http/http.dart' as http;
 
-import '../widgets/app_theme.dart';
+
 
 class AtypicalInspection extends StatefulWidget {
   final String plateValue;
@@ -34,6 +37,8 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
   String selectedVehicleType = 'Automovil';
   String selectedCarBrand = 'Toyota';
   bool isLoading = false;
+
+  List<LocalInspection> localInspections = [];
 
   List<String> vehicleTypes = [
     'Automovil',
@@ -83,6 +88,7 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
   void initState() {
     super.initState();
     _getLocation();
+    _loadLocalInspections();
   }
 
   Future<void> _getLocation() async {
@@ -135,9 +141,15 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
       setState(() {
         photos[photoIndex] = imageFile;
         photosInfo[photoIndex] = fileInfo;
+
+        // Almacenar la ruta de la imagen en la instancia de LocalInspection
+        // localInspection.imagePaths[photoIndex] = imageFile.path;
       });
     }
   }
+
+
+
 
   Widget _buildPhoto(int photoIndex, String buttonText) {
     final photo = photos[photoIndex];
@@ -388,50 +400,69 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
     );
   }
 
-  Future<void> _sendDataToAPI() async {
-    final user = Provider.of<User>(context, listen: false);
-    final DateTime currentDate = DateTime.now();
-    final String formattedDate =
-        "${currentDate.year}-${currentDate.month}-${currentDate.day}";
+Future<void> _sendDataToAPI() async {
+  final user = Provider.of<User>(context, listen: false);
+  final DateTime currentDate = DateTime.now();
+  final String formattedDate =
+      "${currentDate.year}-${currentDate.month}-${currentDate.day}";
 
-    bool allPhotosTaken = true;
+  bool allPhotosTaken = true;
 
-    setState(() {
-      isLoading = true;
-    });
+  setState(() {
+    isLoading = true;
+  });
 
-    for (int i = 0; i < photos.length; i++) {
-      if (photos[i] == null) {
-        allPhotosTaken = false;
-        break;
-      }
+  for (int i = 0; i < photos.length; i++) {
+    if (photos[i] == null) {
+      allPhotosTaken = false;
+      break;
     }
+  }
 
-    if (!allPhotosTaken) {
-      isLoading = false;
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Error', style: TextStyle(fontSize: 25.0)),
-          content: const Text(
-            'Para continuar, por favor tome el registro fotográfico completo.',
-            style: TextStyle(fontSize: 25.0),
-          ),
-          
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Aceptar', style: TextStyle(fontSize: 25.0)),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
+  if (!allPhotosTaken) {
+    isLoading = false;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error', style: TextStyle(fontSize: 25.0)),
+        content: const Text(
+          'Para continuar, por favor tome el registro fotográfico completo.',
+          style: TextStyle(fontSize: 25.0),
         ),
-      );
-      return;
-    }
+        actions: <Widget>[
+          TextButton(
+            child: const Text('Aceptar', style: TextStyle(fontSize: 25.0)),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      ),
+    );
+    return;
+  }
 
-    var postUri = Uri.parse('https://ibingcode.com/public/subirinspeccion');
+  final LocalInspection localInspection = LocalInspection(
+    plate: widget.plateValue,
+    fecha_inspeccion: formattedDate,
+    fecha_ingreso: "",
+    estado: "1",
+    id_funcionario: user.id.toString(),
+    id_proyecto: "1",
+    latitud: latitude.toString(),
+    longitud: longitude.toString(),
+    marca: selectedCarBrand,
+    tipo_vehiculo: selectedVehicleType,
+    multimedia: "multimedia/inspecciones/${widget.plateValue}",
+    numero_motor: numeroMotor,
+    numero_chasis: numeroChasis,
+    local_state: 0,
+  );
+
+  localInspections.add(localInspection);
+
+  try {
+    var postUri = Uri.parse('https://ibingcode.com/public/subirinspeccion_test');
     http.MultipartRequest request = http.MultipartRequest("POST", postUri);
     final Map<String, String> data = {
       "placa": widget.plateValue,
@@ -457,17 +488,12 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
     }
     request.fields.addAll(data);
     http.StreamedResponse response = await request.send();
-    final respStr = await response.stream.bytesToString();
-    setState(() {
-      isLoading = false;
-    });
 
     if (response.statusCode == 200) {
-      final jsonResponse = respStr;
+      final jsonResponse = await response.stream.bytesToString();
       final respuesta = jsonResponse.toString();
 
       if (respuesta.contains("0")) {
-        isLoading = false;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -479,8 +505,7 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
             actions: <Widget>[
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).popUntil((route) => route
-                      .isFirst); // Esto mantendrá solo la pantalla inicial (Home) en la pila
+                  Navigator.of(context).popUntil((route) => route.isFirst);
                 },
                 child: const Text(
                   'Aceptar',
@@ -490,8 +515,13 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
             ],
           ),
         );
+
+        setState(() {
+          localInspection.local_state = 1;
+        });
+
+        _saveLocalInspectionsToJson(localInspections);
       } else if (respuesta.contains("1")) {
-        isLoading = false;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -518,7 +548,6 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
         );
       }
     } else {
-      isLoading = false;
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -529,7 +558,9 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
           ),
           actions: <Widget>[
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
               child: const Text(
                 'Aceptar',
                 style: TextStyle(fontSize: 25),
@@ -539,12 +570,294 @@ class _AtypicalInspectionState extends State<AtypicalInspection> {
         ),
       );
     }
+  } catch (error) {
+    print('Error al enviar la inspección: $error');
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(''),
+        content: const Text(
+          'Error al enviar la inspección, se guardará localmente',
+          style: TextStyle(fontSize: 25),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+            child: const Text(
+              'Aceptar',
+              style: TextStyle(fontSize: 25),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    setState(() {
+      isLoading = false;
+    });
+
+    _saveLocalInspectionsToJson(localInspections);
   }
+}
+
+
+  // Future<void> _sendDataToAPI() async {
+  //   final user = Provider.of<User>(context, listen: false);
+  //   final DateTime currentDate = DateTime.now();
+  //   final String formattedDate =
+  //       "${currentDate.year}-${currentDate.month}-${currentDate.day}";
+
+  //   bool allPhotosTaken = true;
+
+  //   setState(() {
+  //     isLoading = true;
+  //   });
+    
+
+  //   for (int i = 0; i < photos.length; i++) {
+  //     if (photos[i] == null) {
+  //       allPhotosTaken = false;
+  //       break;
+  //     }
+  //   }
+
+  //   if (!allPhotosTaken) {
+  //     isLoading = false;
+  //     showDialog(
+  //       context: context,
+  //       builder: (context) => AlertDialog(
+  //         title: const Text('Error', style: TextStyle(fontSize: 25.0)),
+  //         content: const Text(
+  //           'Para continuar, por favor tome el registro fotográfico completo.',
+  //           style: TextStyle(fontSize: 25.0),
+  //         ),
+          
+  //         actions: <Widget>[
+  //           TextButton(
+  //             child: const Text('Aceptar', style: TextStyle(fontSize: 25.0)),
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //             },
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //     return;
+  //   }
+
+  //   // Crear instancia de LocalInspection antes de realizar la solicitud a la API
+  // final LocalInspection localInspection = LocalInspection(
+  //    plate: widget.plateValue,
+  //     fecha_inspeccion: formattedDate,
+  //     fecha_ingreso: "",
+  //     estado: "1",
+  //     id_funcionario: user.id.toString(),
+  //     id_proyecto: "1",
+  //     latitud: latitude.toString(),
+  //     longitud: longitude.toString(),
+  //     marca: selectedCarBrand,
+  //     tipo_vehiculo: selectedVehicleType,
+  //     multimedia: "multimedia/inspecciones/${widget.plateValue}",
+  //     numero_motor: numeroMotor,
+  //     numero_chasis: numeroChasis,
+  //     local_state: 0,
+  // );
+
+  // localInspections.add(localInspection); // Agregar a la lista de inspecciones locales
+
+
+  //   var postUri = Uri.parse('https://ibingcode.com/public/subirinspeccion_test');
+  //   http.MultipartRequest request = http.MultipartRequest("POST", postUri);
+  //   final Map<String, String> data = {
+  //     "placa": widget.plateValue,
+  //     "fecha_inspeccion": formattedDate,
+  //     "fecha_ingreso": "",
+  //     "estado": "1",
+  //     "id_funcionario": user.id.toString(),
+  //     "id_proyecto": "1",
+  //     "latitud": latitude.toString(),
+  //     "longitud": longitude.toString(),
+  //     "marca": selectedCarBrand,
+  //     "tipo_vehiculo": selectedVehicleType,
+  //     "multimedia": "multimedia/inspecciones/${widget.plateValue}",
+  //     "numeromotor": numeroMotor,
+  //     "numerochasis": numeroChasis,
+  //   };
+  //   for (var i = 0; i < photos.length; i++) {
+  //     if (photos[i] != null) {
+  //       http.MultipartFile multipartFile =
+  //           await http.MultipartFile.fromPath("image-$i", photos[i]!.path);
+  //       request.files.add(multipartFile);
+  //     }
+  //   }
+  //   request.fields.addAll(data);
+  //   http.StreamedResponse response = await request.send();
+  //   final respStr = await response.stream.bytesToString();
+  //   setState(() {
+  //     isLoading = false;
+  //   });
+
+  //   if (response.statusCode == 200) {
+  //     final jsonResponse = respStr;
+  //     final respuesta = jsonResponse.toString();
+
+  //     if (respuesta.contains("0")) {
+  //       isLoading = false;
+  //       showDialog(
+  //         context: context,
+  //         builder: (context) => AlertDialog(
+  //           title: const Text(''),
+  //           content: const Text(
+  //             'Inspección registrada satisfactoriamente',
+  //             style: TextStyle(fontSize: 25),
+  //           ),
+  //           actions: <Widget>[
+  //             TextButton(
+  //               onPressed: () {
+  //                 Navigator.of(context).popUntil((route) => route
+  //                     .isFirst); // Esto mantendrá solo la pantalla inicial (Home) en la pila
+  //               },
+  //               child: const Text(
+  //                 'Aceptar',
+  //                 style: TextStyle(fontSize: 25),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       );
+
+  //       // Actualizar el estado de la inspección local a completado
+  //     setState(() {
+  //       localInspection.local_state = 1;
+  //     });
+
+  //     // Guardar la lista actualizada de inspecciones locales en el archivo .json
+  //     _saveLocalInspectionsToJson(localInspections);
+
+  //     } else if (respuesta.contains("1")) {
+  //       isLoading = false;
+  //       showDialog(
+  //         context: context,
+  //         builder: (context) => AlertDialog(
+  //           title: const Text(''),
+  //           content: const Text(
+  //             'La placa ingresada ya cuenta con una inspección',
+  //             style: TextStyle(fontSize: 25),
+  //           ),
+  //           actions: <Widget>[
+  //             TextButton(
+  //               onPressed: () => Navigator.pushReplacement(
+  //                 context,
+  //                 MaterialPageRoute(
+  //                   builder: (context) => const FindPlatePage(),
+  //                 ),
+  //               ),
+  //               child: const Text(
+  //                 'Aceptar',
+  //                 style: TextStyle(fontSize: 25),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       );
+  //     }
+  //   } else {
+  //     isLoading = false;
+  //     showDialog(
+  //       context: context,
+  //       builder: (context) => AlertDialog(
+  //         title: const Text(''),
+  //         content: const Text(
+  //           'Error de conexión con el servidor, favor informar al administrador',
+  //           style: TextStyle(fontSize: 25),
+  //         ),
+  //         actions: <Widget>[
+  //           TextButton(
+  //             onPressed: () => Navigator.of(context).pop(),
+  //             child: const Text(
+  //               'Aceptar',
+  //               style: TextStyle(fontSize: 25),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //   }
+  // }
 
   @override
   void dispose() {
     super.dispose();
   }
+
+void _saveLocalInspectionsToJson(List<LocalInspection> localInspections) async {
+  final directory = await getApplicationDocumentsDirectory();
+  final filePath = '${directory.path}/inspections_local.json';
+
+  try {
+    final file = File(filePath);
+
+    List<String> existingPlates = [];
+
+    if (await file.exists()) {
+      final String fileContent = await file.readAsString();
+      final List<dynamic> inspectionsData = jsonDecode(fileContent);
+
+      // Obtener la lista actual de placas en el archivo
+      existingPlates = inspectionsData
+          .map((inspection) => inspection['plate'].toString())
+          .toList();
+
+      // Filtrar inspecciones locales que ya existen en la lista
+      final List<LocalInspection> newInspections = localInspections
+          .where((localInspection) => !existingPlates.contains(localInspection.plate))
+          .toList();
+
+      // Agregar las nuevas inspecciones a la lista
+      final List<dynamic> updatedData = [...inspectionsData, ...newInspections];
+
+      // Guardar la lista actualizada en el archivo
+      final String jsonContent = jsonEncode(updatedData);
+      await file.writeAsString(jsonContent);
+    } else {
+      // Si el archivo no existe, simplemente guarda la lista actual
+      final String jsonContent = jsonEncode(localInspections);
+      await file.writeAsString(jsonContent);
+    }
+  } catch (error) {
+    print('Error saving local inspections to file: $error');
+  }
+}
+
+
+  Future<void> _loadLocalInspections() async {
+  try {
+    final directory = await getApplicationDocumentsDirectory();
+    final filePath = '${directory.path}/inspections_local.json';
+
+    final File file = File(filePath);
+
+    if (await file.exists()) {
+      final String fileContent = await file.readAsString();
+      final List<dynamic> inspectionsData = jsonDecode(fileContent);
+
+      setState(() {
+        localInspections = inspectionsData
+            .map((data) => LocalInspection.fromJson(data))
+            .toList();
+      });
+
+      print('Local inspections loaded from file');
+    } else {
+      print('No local inspections file found');
+    }
+  } catch (error) {
+    print('Error loading local inspections: $error');
+  }
+}
+
 }
 
 class FileInfo {
@@ -574,4 +887,8 @@ class ApiResponse {
       datos: json['DATOS'] as String,
     );
   }
+
+
+ 
+
 }

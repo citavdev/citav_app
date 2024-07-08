@@ -1,8 +1,10 @@
 import 'dart:convert';
-import 'dart:io'; // Importa la biblioteca de manejo de archivos
+import 'dart:io';
 import 'package:citav_app/entities/apiService.dart';
+import 'package:connectivity/connectivity.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../entities/user.dart';
 import '../widgets/app_theme.dart';
 import 'package:path_provider/path_provider.dart';
@@ -21,50 +23,57 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool isLoading = false;
 
-Future<void> _fetchData() async {
-  const String apiUrl = 'https://ibingcode.com/public/listar5Inspecciones_test';
+  Future<void> _fetchData() async {
+    const String apiUrl = 'https://ibingcode.com/public/listar5Inspecciones_test';
 
-  try {
-    final response = await http.post(Uri.parse(apiUrl));
+    try {
+      final response = await http.post(Uri.parse(apiUrl));
 
-    if (response.statusCode == 200) {
-      final jsonData = json.decode(response.body);
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
 
-      final directory = await getApplicationDocumentsDirectory();
-      final filePath = '${directory.path}/tus_datos.json';
+        final directory = await getApplicationDocumentsDirectory();
+        final filePath = '${directory.path}/tus_datos.json';
 
-      // Elimina el archivo existente antes de escribir los nuevos datos
-      if (await File(filePath).exists()) {
-        await File(filePath).delete();
+        if (await File(filePath).exists()) {
+          await File(filePath).delete();
+        }
+
+        if (!(await Directory(directory.path).exists())) {
+          await Directory(directory.path).create(recursive: true);
+        }
+
+        final file = File(filePath);
+        await file.writeAsString(json.encode(jsonData));
+      } else {
+        print('Error al obtener datos de la API');
       }
-
-      // Verifica si el directorio existe, si no, créalo
-      if (!(await Directory(directory.path).exists())) {
-        await Directory(directory.path).create(recursive: true);
-      }
-
-      final file = File(filePath);
-      await file.writeAsString(json.encode(jsonData));
-    } else {
-      print('Error al obtener datos de la API');
+    } catch (e) {
+      print('Error de conexión: $e');
     }
-  } catch (e) {
-    print('Error de conexión: $e');
   }
-}
 
-
-  Future<void> _login(BuildContext context) async {
+  Future<bool> _login(BuildContext context, {bool validateApi = true}) async {
     setState(() {
       isLoading = true;
     });
 
-    const String apiUrl = 'https://ibingcode.com/public/login';
+    final String apiUrl = 'https://ibingcode.com/public/login';
 
-    final Map<String, dynamic> data = {
-      'username': _userController.text,
-      'password': _passwordController.text,
-    };
+    Map<String, dynamic> data;
+
+    if (validateApi) {
+      data = {
+        'username': _userController.text,
+        'password': _passwordController.text,
+      };
+    } else {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      data = {
+        'username': prefs.getString('username') ?? '',
+        'password': prefs.getString('password') ?? '',
+      };
+    }
 
     try {
       final response = await http.post(
@@ -85,81 +94,175 @@ Future<void> _fetchData() async {
             name: jsonResponse['nombre'],
             id: jsonResponse['cedula'].toString(),
             token: jsonResponse['token'],
+            password: jsonResponse['password'],
           );
 
-          await _fetchData(); // Llama a _fetchData después de iniciar sesión
+          if (validateApi) {
+            await _saveCredentialsLocally(
+              username: jsonResponse['usuario'],
+              name: jsonResponse['nombre'],
+              id: jsonResponse['cedula'].toString(),
+              token: jsonResponse['token'],
+              password: jsonResponse['password'],
+            );
+          }
+
+          await _fetchData();
           await ApiService().fetchDataAndStoreLocally();
 
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomePage()),
-          );
+          return true;
         } else {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text(
-                'Error de inicio de sesión',
-                style: TextStyle(fontSize: 24),
-              ),
-              content: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.5,
-                child: const Text(
-                  'Usuario o contraseña incorrectos.',
-                  style: TextStyle(fontSize: 25),
-                ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text(
-                    'Aceptar',
-                    style: TextStyle(fontSize: 25),
-                  ),
-                ),
-              ],
-            ),
-          );
+          _showErrorDialog(context, 'Usuario o contraseña incorrectos.');
+          return false;
         }
       } else {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Error de conexión'),
-            content: const Text('No se pudo conectar con el servidor.'),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text(
-                  'Aceptar',
-                  style: TextStyle(fontSize: 25),
-                ),
-              ),
-            ],
-          ),
-        );
+        _showErrorDialog(context, 'No se pudo conectar con el servidor.');
+        return false;
       }
     } catch (e) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Error de conexión'),
-          content: const Text('No se pudo conectar con el servidor.'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'Aceptar',
-                style: TextStyle(fontSize: 25),
-              ),
-            ),
-          ],
-        ),
-      );
+      if (validateApi) {
+        if (e is SocketException) {
+          print('No hay conexión a Internet. Iniciar sesión con datos locales.');
+          return false;
+        } else {
+          print('Error al conectar con el servidor. Error: $e');
+          return false;
+        }
+      } else {
+        print('Error al conectar con el servidor. Error: $e');
+        return false;
+      }
     } finally {
       setState(() {
         isLoading = false;
       });
     }
+  }
+
+  Future<void> _saveCredentialsLocally({
+    required String username,
+    required String name,
+    required String id,
+    required String token,
+    required String password,
+  }) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString('username', username);
+    prefs.setString('name', name);
+    prefs.setString('id', id);
+    prefs.setString('token', token);
+    prefs.setString('password', password);
+  }
+
+  Future<void> _tryLoginWithStoredCredentials(BuildContext context) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  final storedUsername = prefs.getString('username');
+  final storedPassword = prefs.getString('password');
+
+  if (storedUsername != null && storedPassword != null) {
+    setState(() {
+      _userController.text = storedUsername;
+      _passwordController.text = storedPassword;
+      isLoading = true;
+    });
+
+    print('Trying to login with stored credentials...');
+    bool success = await _login(context, validateApi: false);
+
+    setState(() {
+      isLoading = false;
+    });
+
+    if (success) {
+      print('Login with stored credentials completed.');
+    } else {
+      print('Login with stored credentials failed.');
+      _showErrorDialog(context, 'No se pudo iniciar sesión con los datos locales.');
+    }
+  } else {
+    print('No stored credentials found.');
+  }
+}
+
+
+  Future<bool> _checkInternetConnectivity() async {
+    var connectivityResult = await (Connectivity().checkConnectivity());
+    return connectivityResult != ConnectivityResult.none;
+  }
+
+
+  Future<void> _checkInternetAndLogin(BuildContext context) async {
+  bool hasInternet = await _checkInternetConnectivity();
+  if (hasInternet) {
+    await _tryLoginWithStoredCredentials(context);
+  } else {
+    _showStoredCredentialsDialog(context);
+  }
+}
+
+
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Error de inicio de sesión',
+          style: TextStyle(fontSize: 24),
+        ),
+        content: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.5,
+          child: Text(
+            message,
+            style: const TextStyle(fontSize: 25),
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Aceptar',
+              style: TextStyle(fontSize: 25),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showStoredCredentialsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Datos almacenados localmente',
+          style: TextStyle(fontSize: 24),
+        ),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Usuario: ${_userController.text}'),
+            Text('Contraseña: ${_passwordController.text}'),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Aceptar',
+              style: TextStyle(fontSize: 25),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _checkInternetAndLogin(context);
   }
 
   @override
@@ -226,13 +329,13 @@ Future<void> _fetchData() async {
                               textStyle: const TextStyle(
                                 fontSize: 35,
                               ),
-                              backgroundColor: Color(0xFF111D26), // Cambia el color de fondo
-                              foregroundColor: Colors.white
+                              backgroundColor: Color(0xFF111D26),
+                              foregroundColor: Colors.white,
                             ),
                             child: const Text('     Iniciar sesión     '),
                           ),
                         if (isLoading)
-                          const CircularProgressIndicator(), // Indicador de carga
+                          const CircularProgressIndicator(),
                       ],
                     ),
                   ),
